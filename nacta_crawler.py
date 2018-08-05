@@ -11,7 +11,7 @@ import argparse
 import time, threading
 
 ROOT_URL = "https://www.nacta.edu.cn/xwgg/xyxw/index.htm"
-MAX_THREADS = 4
+MAX_THREADS = 32
 
 # create db connection
 mongo = pymongo.MongoClient('mongodb://root:averystrongandstupidpassword@localhost:27017')
@@ -71,13 +71,13 @@ def find_original_image(url):
 def download_images(image_urls):
     for url in image_urls:
         download_image(url)
-        #download_image(find_original_image(url))
+        download_image(find_original_image(url))
 
 def download_image(image_url):
     print("Downloading image %s" % image_url)
     filename = image_url[image_url.rfind('/')+1:]
     dir_start = image_url.find('content')+8
-    dir_end = dir_start+7
+    dir_end = image_url.rfind('/')
     directory = image_url[dir_start:dir_end]
     directory = "images/%s" % directory
     if not os.path.exists(directory):
