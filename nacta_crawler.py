@@ -71,7 +71,17 @@ def download_images(image_urls):
         download_image(find_original_image(url))
 
 def download_image(image_url):
-    
+    filename = image_url[image_url.rfind('/')+1:]
+    dir_start = image_url.find('content')+8
+    dir_end = dir_start+7
+    directory = image_url[dir_start:dir_end]
+    path = "images/%s/%s" % (directory, filename)
+    r = request.get(image_url, stream=True)
+    if r.status_code == 200:
+        with open(path, 'wb') as f:
+            for chunk in r.iter_content(1024):
+                f.write(chunk)
+
 
 def save_news_url(urls):
     db['urls'].insert_many(urls)
