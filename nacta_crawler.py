@@ -35,6 +35,7 @@ def index_urls():
     return urls
 
 def parse_index(url):
+    print("Reading links from index %s" % url)
     html = read_page(url)
     soup = BeautifulSoup(html, features="html5lib")
     news_list_soup = soup.find('div', attrs={'class':'view-campus-news'})
@@ -142,6 +143,7 @@ def image_thread():
 def main(args):
     if (args.mode=='urls'):
         print('Getting news urls')
+        db['urls'].remove({})
         for page in index_urls():
             news_urls = parse_index(page)
             print('Saving %d urls' % len(news_urls))
