@@ -42,8 +42,8 @@ def parse_index(url):
     urls = []
     for news_link in news_list_soup.find_all('a', attrs={'target': '_blank'}):
         raw_url = news_link.get('href')
-        id = int(raw_url.split('.')[0])
         news_url = urljoin(url, raw_url)
+        id = int(news_url[news_url.rfind('/')+1:news_url.rfind('.')])
         news_title = news_link.getText()
         urls.append({'_id': id, 'url': news_url})
     return urls
