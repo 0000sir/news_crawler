@@ -6,10 +6,12 @@ import codecs
 from bs4 import BeautifulSoup
 import pymongo
 import sys
+import os
 import argparse
 import time, threading
 
 ROOT_URL = "https://www.nacta.edu.cn/xwgg/xyxw/index.htm"
+MAX_THREADS = 4
 
 # create db connection
 mongo = pymongo.MongoClient('mongodb://root:averystrongandstupidpassword@localhost:27017')
@@ -24,7 +26,7 @@ def read_page(url):
 def index_urls():
     urls = []
     base = "https://www.nacta.edu.cn/xwgg/xyxw/"
-    for i in range(4): # 447 totals
+    for i in range(447): # 447 totals
         if i==0:
             url = urljoin(base, 'index.htm')
         else:
@@ -68,15 +70,19 @@ def find_original_image(url):
 def download_images(image_urls):
     for url in image_urls:
         download_image(url)
-        download_image(find_original_image(url))
+        #download_image(find_original_image(url))
 
 def download_image(image_url):
+    print("Downloading image %s" % image_url)
     filename = image_url[image_url.rfind('/')+1:]
     dir_start = image_url.find('content')+8
     dir_end = dir_start+7
     directory = image_url[dir_start:dir_end]
-    path = "images/%s/%s" % (directory, filename)
-    r = request.get(image_url, stream=True)
+    directory = "images/%s" % directory
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    path = "%s/%s" % (directory, filename)
+    r = requests.get(image_url, stream=True)
     if r.status_code == 200:
         with open(path, 'wb') as f:
             for chunk in r.iter_content(1024):
@@ -125,13 +131,12 @@ def content_thread():
 
 def image_thread():
     print("Downloading images in thread %s" % threading.current_thread().name)
-    while db['urls'].count_documents({'state': {'$exists': False}})>0:
-        urls = fetch_batch_virgin(10)
+    while db['urls'].count_documents({'state': 'html_loaded'})>0:
+        urls = fetch_batch_pregnant(10)
         for url in urls:
-            content = parse_news(url['url'])
+            download_images(url['image_urls'])
             url['state'] = 'images_loaded'
-            content = dict(url, **content)
-            db['urls'].update_one(filter={'_id': url['_id']}, update={'$set': content})
+            db['urls'].update_one(filter={'_id': url['_id']}, update={'$set': url})
     print("Exiting image downloading thread %s" % threading.current_thread().name)
 
 def main(args):
@@ -143,18 +148,24 @@ def main(args):
             save_news_url(news_urls)
     elif(args.mode=='contents'):
         print('Getting news contents')
-        for i in range(4):
+        for i in range(MAX_THREADS):
             t = threading.Thread(target=content_thread, name='Content Thread %d' % i)
             t.start()
     elif(args.mode=='images'):
         print('Downloading images')
+        for i in range(MAX_THREADS):
+            t = threading.Thread(target=image_thread, name='Image Thread %d' % i)
+            t.start()
     elif(args.mode=='clear_db'):
         print('Clearing db contents')
         db['urls'].update_many({'state': {'$exists': True}}, {'$unset': {"state": True}})
+    elif(args.mode=='clear_img'):
+        print('Clearing db image status')
+        db['urls'].update_many({}, {'$set': {'state': 'html_loaded'}})
 
 def parse_arguments(argv):
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', type=str, choices=['urls', 'contents', 'images', 'clear_db'])
+    parser.add_argument('mode', type=str, choices=['urls', 'contents', 'images', 'clear_db', 'clear_img'])
 
     return parser.parse_args(argv)
 
