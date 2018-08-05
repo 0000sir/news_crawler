@@ -1,0 +1,11 @@
+version: '2'
+services:
+  db:
+    image: mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=averystrongandstupidpassword
+    volumes:
+      - ./mongodb:/data/db
+    ports:
+      - 27017:27017
